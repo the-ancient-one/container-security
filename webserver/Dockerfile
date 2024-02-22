@@ -1,10 +1,13 @@
 # Webserver Dockerfile
 
-FROM php:fpm-alpine3.18
+FROM debian:bookworm-slim
 
-RUN apk --no-cache add \
+RUN apt-get update && \
+    apt-get install -y \
     nginx \
-    php81-mysqli
+    php8.2 \
+    php8.2-mysqlnd \
+    php8.2-fpm
 
 COPY webfiles/ /var/www/html
 
@@ -16,8 +19,8 @@ COPY configfiles/docker-entrypoint.sh /
 
 RUN rm -f /var/www/html/index.html /var/www/html/nginx-logo.png /var/www/html/poweredby.png  && \
 	chmod +x /docker-entrypoint.sh && \
-	addgroup apache && adduser -D -G apache -s /bin/sh apache && \
-    chown apache:apache /var/www/html/*.php 
+	addgroup nginx && adduser --system --no-create-home --ingroup nginx --shell /bin/sh nginx && \
+    chown nginx:nginx /var/www/html/*.php 
 
 
 EXPOSE 80 

@@ -6,6 +6,9 @@ $dbname = "csvs23db";
 
 // Create connection with error handling
 $conn = new mysqli($servername, $username, $password, $dbname);
+
+// $conn = $conn = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password );
+
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
