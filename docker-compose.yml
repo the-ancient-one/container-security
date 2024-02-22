@@ -1,0 +1,48 @@
+version: "3"
+
+networks:
+  csvs_dbserver_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: ${SUBNET}
+
+services:
+  csvs_dbserver:
+    image: ${SID}_${DB_NAME}_i
+    container_name: ${SID}_${DB_NAME}_c
+    build:
+      context: ${DB_PATH}
+      dockerfile: Dockerfile
+    networks:
+      csvs_dbserver_net:
+        ipv4_address: ${DB_IP}
+    hostname: ${DB_HOSTNAME}
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${DB_DATABASE}"
+    privileged: true
+    volumes:
+      # - db_data:/var/lib/mysql/data
+      - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d
+
+  csvs_webserver:
+    image: ${SID}_${WEB_NAME}_i
+    container_name: ${SID}_${WEB_NAME}_c
+    build:
+      context: ${WEB_PATH}
+      dockerfile: Dockerfile
+    ports:
+      - "${WEB_SERVER_PORT}:80"
+    networks:
+      - csvs_dbserver_net
+    hostname: ${WEB_HOSTNAME}
+    # volumes:
+    #   - db_data:/var/lib/mysql/data
+    extra_hosts:
+      - "${DB_HOSTNAME}:${DB_IP}"
+    depends_on:
+      - csvs_dbserver
+
+volumes:
+  db_data:
