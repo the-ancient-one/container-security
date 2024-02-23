@@ -2,8 +2,7 @@
 
 FROM rockylinux:9.3
 
-RUN yum install epel-release -y && \
-	yum update -y && \
+RUN yum update -y && \
 	yum install -y \
 	nginx \
 	php \
@@ -20,7 +19,6 @@ COPY configfiles/docker-entrypoint.sh /
 
 RUN rm -f /var/www/html/index.html /var/www/html/nginx-logo.png /var/www/html/poweredby.png  && \
 	chmod +x /docker-entrypoint.sh && \
-	# addgroup nginx && adduser --system --no-create-home --ingroup nginx --shell /bin/sh nginx && \
     chown nginx:nginx /var/www/html/*.php 
 
 
