@@ -21,10 +21,17 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
       MYSQL_DATABASE: "${DB_DATABASE}"
-    privileged: true
+    # privileged: true
     volumes:
       # - db_data:/var/lib/mysql/data
       - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d
+    security_opt:
+      - "no-new-privileges=true"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.02'
+          memory: 512M
 
   csvs_webserver:
     image: ${SID}_${WEB_NAME}_i
@@ -43,6 +50,13 @@ services:
       - "${DB_HOSTNAME}:${DB_IP}"
     depends_on:
       - csvs_dbserver
+    security_opt:
+      - "no-new-privileges=true"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.01'
+          memory: 100M
 
 volumes:
   db_data:
