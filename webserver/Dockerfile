@@ -24,4 +24,6 @@ RUN rm -f /var/www/html/index.html /var/www/html/nginx-logo.png /var/www/html/po
 
 EXPOSE 80 
 
+USER nginx
+
 ENTRYPOINT ["/docker-entrypoint.sh"]
