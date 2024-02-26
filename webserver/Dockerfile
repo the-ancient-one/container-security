@@ -1,5 +1,6 @@
 # Webserver Dockerfile
 
+# avoid using "latest" tag unless needed, as this will create confusion with the running version number 
 FROM rockylinux:9.3
 
 RUN yum update -y && \
@@ -24,6 +25,6 @@ RUN rm -f /var/www/html/index.html /var/www/html/nginx-logo.png /var/www/html/po
 
 EXPOSE 80 
 
-USER nginx
-
 ENTRYPOINT ["/docker-entrypoint.sh"]
+
+# USER nginx

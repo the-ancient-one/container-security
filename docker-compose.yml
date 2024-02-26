@@ -21,17 +21,22 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
       MYSQL_DATABASE: "${DB_DATABASE}"
-    # privileged: true
     volumes:
-      # - db_data:/var/lib/mysql/data
+      - db_data:/var/lib/mysql
       - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d
     security_opt:
       - "no-new-privileges=true"
+      # - "seccomp=default.json"
     deploy:
       resources:
         limits:
-          cpus: '0.02'
+          cpus: '0.2'
           memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   csvs_webserver:
     image: ${SID}_${WEB_NAME}_i
@@ -44,19 +49,29 @@ services:
     networks:
       - csvs_dbserver_net
     hostname: ${WEB_HOSTNAME}
-    # volumes:
-    #   - db_data:/var/lib/mysql/data
     extra_hosts:
       - "${DB_HOSTNAME}:${DB_IP}"
     depends_on:
       - csvs_dbserver
     security_opt:
       - "no-new-privileges=true"
+      - "seccomp=default.json"
     deploy:
       resources:
         limits:
-          cpus: '0.01'
+          cpus: '0.1'
           memory: 100M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # secrets:
+    #   - db_password 
+      
+secrets:
+  db_password:
+    file: dbserver/db_password.txt
 
 volumes:
   db_data:
