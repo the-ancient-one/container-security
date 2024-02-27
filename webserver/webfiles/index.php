@@ -1,13 +1,11 @@
 <?php
 $servername = "db.cyber23.test";
 $username = "wwwclient23";
-$password = "wwwclient23Creds";
+$password = rtrim(file_get_contents("/run/secrets/db_password"));
 $dbname = "csvs23db";
 
 // Create connection with error handling
 $conn = new mysqli($servername, $username, $password, $dbname);
-
-// $conn = $conn = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password );
 
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);

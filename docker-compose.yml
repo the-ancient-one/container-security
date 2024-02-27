@@ -2,6 +2,7 @@ version: "3"
 
 networks:
   csvs_dbserver_net:
+    driver: bridge
     ipam:
       driver: default
       config:
@@ -18,9 +19,6 @@ services:
       csvs_dbserver_net:
         ipv4_address: ${DB_IP}
     hostname: ${DB_HOSTNAME}
-    environment:
-      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
-      MYSQL_DATABASE: "${DB_DATABASE}"
     volumes:
       - db_data:/var/lib/mysql
       - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d
@@ -66,8 +64,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    # secrets:
-    #   - db_password 
+    secrets:
+      - db_password 
       
 secrets:
   db_password:
