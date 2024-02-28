@@ -19,9 +19,12 @@ services:
       csvs_dbserver_net:
         ipv4_address: ${DB_IP}
     hostname: ${DB_HOSTNAME}
+    environment:
+      MYSQL_ROOT_PASSWORD: /run/secrets/db_root_password
+      MYSQL_DATABASE: "${DB_DATABASE}"
     volumes:
-      - db_data:/var/lib/mysql
-      - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d
+      - db_data:/var/lib/mysql 
+      - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d :ro
     security_opt:
       - "no-new-privileges=true"
       # - "seccomp=default.json"
@@ -70,6 +73,8 @@ services:
 secrets:
   db_password:
     file: dbserver/db_password.txt
+  db_root_password:
+    file: dbserver/db_root_password.txt
 
 volumes:
   db_data:
