@@ -10,7 +10,16 @@ version='1.0'
 images_regx="csvs"
 
 function device_details(){
-    system_profiler SPHardwareDataType  |egrep -E "Model Name|Model Identifier|Chip|Total Number of Cores|Memory|Hardware" | grep -v UUID
+
+    UNAME_MACHINE="$(/usr/bin/uname -m)"
+
+    if [[ "${UNAME_MACHINE}" == "arm64" ]]
+    then
+        system_profiler SPHardwareDataType  |egrep -E "Model Name|Model Identifier|Chip|Total Number of Cores|Memory|Hardware" | grep -v UUID
+    else
+    echo -e "Not a macOS \n "
+    fi
+   
 }
 
 function check_docker_daemon() {
@@ -48,8 +57,6 @@ function search_docker_images() {
 }
 
 function run_trivy_scan() {
-
-    # if check_package "trivy"; then
         echo -e "Scanning Docker images vulnerabilities, misconfiguration and secrets \n"
 
         # Iterate over Docker images and filter them based on regex
@@ -62,10 +69,6 @@ function run_trivy_scan() {
 
             fi
         done
-    # else
-    #     echo "trivy does not exist. Exiting..."
-    #     return 1
-    # fi
 }
 
 function check_secopt() {
