@@ -165,7 +165,7 @@ function validate_compose_config() {
     echo -e "\n Validating container configuration from Docker Compose file: $compose_file"
 
     # Print table headers
-    printf "%-20s | %-15s | %-15s | %-15s | %-15s | %-15s | %-15s\n" "Service" "Health Check" "Logging" "Resource Limits" "CPU Limits (%)" "Memory Limits(MB)" "PID Limits"
+    printf "%-20s | %-15s | %-15s | %-15s | %-15s | %-15s | %-15s\n" "Service" "Health Check" "Logging" "Resource Limits" "CPU Limits (%)" "Memory Limits (MB)" "PID Limits"
     echo "-----------------------------------------------+-----------------+-----------------+-----------------+-----------------+-----------------"
 
     # Parse the Docker Compose file and validate each service
@@ -231,7 +231,7 @@ main(){
     echo -e " \n ## Checking SecurityOpt #########################################################\n "
     check_secopt
 
-    echo -e " \n ## Checking Resource Limits #########################################################\n "
+    echo -e " \n ## Checking Container Resource #########################################################\n "
     check_docker_stats_resources
 
     echo -e " \n ## Checking Container Logs #########################################################\n "

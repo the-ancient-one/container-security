@@ -64,7 +64,7 @@ services:
       - csvs_dbserver
     security_opt:
       - "no-new-privileges=true"
-      - "seccomp=default.json"
+      - "seccomp=seccomp/default.json"
     deploy:
       resources:
         limits:
