@@ -7,7 +7,11 @@
 
 version='1.0'
 
+##################### Variables #####################
 images_regx="csvs"
+
+
+##################### Functions #####################
 
 function device_details(){
 
@@ -38,6 +42,11 @@ function check_package() {
         echo -e "$1 package is not installed. \n"
         return 0
     fi
+}
+
+function pre_requisite(){
+    #the packages from brew and other things will go here.
+    echo "TO DO the function"
 }
 
 function check_variable() {
@@ -141,6 +150,45 @@ function check_docker_container_logs() {
     done
 }
 
+function validate_compose_config() {
+    local compose_file="$1"
+
+    echo "Validating container configuration from Docker Compose file: $compose_file"
+
+    # Check if the Docker Compose file exists
+    if [ ! -f "$compose_file" ]; then
+        echo "Error: Docker Compose file $compose_file not found."
+        return 1
+    fi
+
+    # Print table headers
+    printf "%-20s | %-15s | %-15s | %-15s | %-15s | %-15s | %-15s\n" "Service" "Health Check" "Logging" "Resource Limits" "CPU Limits" "Memory Limits" "PID Limits"
+    echo "-----------------------------------------------+-----------------+-----------------+-----------------+-----------------+-----------------"
+
+    # Parse the Docker Compose file and validate each service
+    services=$(docker-compose -f "$compose_file" config --services)
+    for service in $services; do
+        # Check for health check
+        healthcheck=$(docker-compose -f "$compose_file" config "$service" | grep -c "healthcheck:")
+        # Check for logging configuration
+        logging=$(docker-compose -f "$compose_file" config "$service" | grep -c "logging:")
+        # Check for resource limits
+        resources=$(docker-compose -f "$compose_file" config "$service" | grep -c "resources:")
+        # Check for Sub resource limits 
+        cpu_limits=$(docker-compose -f "$compose_file" config "$service" | grep -c "cpus:")
+        memory_limits=$(docker-compose -f "$compose_file" config "$service" | grep -c "memory:")
+        pid_limits=$(docker-compose -f "$compose_file" config "$service" | grep -c "pids:")
+
+        # Print service information in table format
+       printf "%-20s | %-15s | %-15s | %-15s | %-15s | %-15s | %-15s\n" "$service" "$(if [ "$healthcheck" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$logging" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$resources" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$cpu_limits" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$memory_limits" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$pid_limits" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)"
+    done
+}
+
+
+########################################################### 
+##################### Main Function #######################
+###########################################################
+
 main(){
     echo -e "\n ## Print Device Details ######################################################### "
     device_details 
@@ -150,16 +198,22 @@ main(){
     echo "Docker daemon is running. Continuing with the script..."
 
     echo -e " \n ########################################################### "
-    echo -e " #################### Static ##############################"
+    echo -e " #################### Docker-compose #######################"
+    echo -e " ###########################################################\n "
+    echo -e "Checking docker-compose configuration details \n"
+    validate_compose_config "../docker-compose.yml" # location of the docker-compose file 
+
+    echo -e " \n \n ########################################################### "
+    echo -e " #################### Static ###############################"
     echo -e " ###########################################################\n "
     
     echo -e "\n ## Trusted Repo Pull ######################################################### "
     echo -e "Checking if the DOCKER_CONTENT_TRUST variable is set in the environment \n"
-    check_variable DOCKER_CONTENT_TRUST
+    check_variable DOCKER_CONTENT_TRUST 
 
     echo -e " \n ## Image Stat check #########################################################"
     echo -e " \n Checking the size and digest of the web and database images \n"
-    search_docker_images $images_regx
+    search_docker_images $images_regx # Variable declared in the top section
 
     echo -e " \n ## Dockerfile lint check #########################################################"
     lint_dockerfiles
@@ -180,5 +234,9 @@ main(){
     echo -e " \n ## Checking Container Logs #########################################################\n "
     check_docker_container_logs
 }
+
+########################################################### 
+################## Main Function Call #####################
+###########################################################
 
 main "$@"
