@@ -153,16 +153,19 @@ function check_docker_container_logs() {
 function validate_compose_config() {
     local compose_file="$1"
 
-    echo "Validating container configuration from Docker Compose file: $compose_file"
-
     # Check if the Docker Compose file exists
     if [ ! -f "$compose_file" ]; then
         echo "Error: Docker Compose file $compose_file not found."
         return 1
     fi
 
+    echo "Docker-compose configuration linting: "
+    docker-compose -f $compose_file config --quiet && printf "OK\n" || printf "ERROR\n"
+
+    echo -e "\n Validating container configuration from Docker Compose file: $compose_file"
+
     # Print table headers
-    printf "%-20s | %-15s | %-15s | %-15s | %-15s | %-15s | %-15s\n" "Service" "Health Check" "Logging" "Resource Limits" "CPU Limits" "Memory Limits" "PID Limits"
+    printf "%-20s | %-15s | %-15s | %-15s | %-15s | %-15s | %-15s\n" "Service" "Health Check" "Logging" "Resource Limits" "CPU Limits (%)" "Memory Limits(MB)" "PID Limits"
     echo "-----------------------------------------------+-----------------+-----------------+-----------------+-----------------+-----------------"
 
     # Parse the Docker Compose file and validate each service
@@ -175,12 +178,12 @@ function validate_compose_config() {
         # Check for resource limits
         resources=$(docker-compose -f "$compose_file" config "$service" | grep -c "resources:")
         # Check for Sub resource limits 
-        cpu_limits=$(docker-compose -f "$compose_file" config "$service" | grep -c "cpus:")
-        memory_limits=$(docker-compose -f "$compose_file" config "$service" | grep -c "memory:")
-        pid_limits=$(docker-compose -f "$compose_file" config "$service" | grep -c "pids:")
+        cpu_limits=$(docker-compose -f "$compose_file" config "$service" | grep "cpus:"| tail -n 1 | awk '{print $NF}')
+        memory_limits=$(docker-compose -f "$compose_file" config "$service" | grep "memory:"| tail -n 1 | awk '{print $NF}')
+        pid_limits=$(docker-compose -f "$compose_file" config "$service" | grep "pids:"| tail -n 1 | awk '{print $NF}')
 
         # Print service information in table format
-       printf "%-20s | %-15s | %-15s | %-15s | %-15s | %-15s | %-15s\n" "$service" "$(if [ "$healthcheck" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$logging" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$resources" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$cpu_limits" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$memory_limits" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$pid_limits" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)"
+       printf "%-20s | %-15s | %-15s | %-15s | %-15s | %-15s | %-15s\n" "$service" "$(if [ "$healthcheck" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$logging" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [ "$resources" -gt 0 ]; then echo "Defined"; else echo "Not Defined"; fi)" "$(if [[ -v cpu_limits ]]; then echo "${cpu_limits//\"/}"; else echo "Not Defined"; fi)" "$(if [[ -v memory_limits ]]; then echo "${memory_limits//\"/} / 1048576" | bc; else echo "Not Defined"; fi)" "$(if [[ -v pid_limits ]]; then echo "$pid_limits"; else echo "Not Defined"; fi)"
     done
 }
 
