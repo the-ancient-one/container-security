@@ -29,6 +29,12 @@ services:
     security_opt:
       - "no-new-privileges=true"
       - "seccomp=seccomp/default.json"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CAP_SETGID
+      - CAP_SETUID
+      - CAP_DAC_OVERRIDE
     deploy:
       resources:
         limits:
@@ -65,6 +71,12 @@ services:
     security_opt:
       - "no-new-privileges=true"
       - "seccomp=seccomp/default.json"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CAP_CHOWN
+      - CAP_SETGID
+      - CAP_SETUID
     deploy:
       resources:
         limits:
