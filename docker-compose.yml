@@ -19,6 +19,7 @@ services:
       csvs_dbserver_net:
         ipv4_address: ${DB_IP}
     hostname: ${DB_HOSTNAME}
+    restart: "no"
     environment:
       MYSQL_ROOT_PASSWORD: /run/secrets/db_root_password
       MYSQL_DATABASE: "${DB_DATABASE}"
@@ -56,6 +57,7 @@ services:
     networks:
       - csvs_dbserver_net
     hostname: ${WEB_HOSTNAME}
+    restart: "no"
     extra_hosts:
       - "${DB_HOSTNAME}:${DB_IP}"
     depends_on:
@@ -90,3 +92,5 @@ secrets:
 
 volumes:
   db_data:
+    driver_opts:
+      size: 500MiB

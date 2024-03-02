@@ -50,10 +50,36 @@ function check_variable() {
 
 function search_docker_images() {
     local regex="$1"
-    echo -e "## Size ####### "
-    docker images --format "{{.Repository}}:{{.Tag}} - {{.Size}}" |grep -i "$regex"
-    echo -e "## Digest ####### "
-    docker image ls --digests --format '{{.Repository}}:{{.Tag}} - {{.Digest}}' | egrep "rockylinux|mariadb|$regex"
+        echo "## Size ##"
+    printf "%-30s | %-30s\n" "Image" "Size"
+    echo "--------------------------------+--------------------------------"
+    docker images --format "{{.Repository}}:{{.Tag}} | {{.Size}}" | grep -i "$regex"
+    echo ""
+    
+    echo "## Digest ##"
+    printf "%-30s | %-70s\n" "Image" "Digest"
+    echo "--------------------------------+------------------------------------------------------------------------"
+    docker image ls --digests --format '{{.Repository}}:{{.Tag}} | {{.Digest}}' | egrep "rockylinux|mariadb|$regex"
+}
+
+function lint_dockerfiles() {
+    local search_dir="../"
+
+    # Find all Dockerfiles in the specified directory and subdirectories
+    dockerfiles=$(find "$search_dir" -type f -name Dockerfile)
+
+    # Check if any Dockerfiles were found
+    if [ -z "$dockerfiles" ]; then
+        echo "No Dockerfiles found in $search_dir or its subdirectories."
+        return
+    fi
+
+    # Loop through each Dockerfile and lint it using hadolint
+    for dockerfile in $dockerfiles; do
+        echo "Linting Dockerfile: $dockerfile"
+        hadolint "$dockerfile"
+        echo "---"
+    done
 }
 
 function run_trivy_scan() {
@@ -85,7 +111,6 @@ function check_secopt() {
     done
 }
 
-
 function check_docker_stats_resources() {
     echo "Checking Docker container resource limits..."
     printf "%-15s | %-25s | %-15s | %-15s | %-15s | %-15s | %-15s | %-15s\n" "Container ID" "Name" "CPU Usage" "Memory Usage" "Memory Percentage" "Network I/O" "Block I/O" "PIDs"
@@ -106,6 +131,16 @@ function check_docker_stats_resources() {
     done
 }
 
+function check_docker_container_logs() {
+    local num_lines="${2:-10}"          
+    # Iterate over Docker images and filter them based on regex
+    for container_name in $(docker ps --format "{{.Names}}"); do
+        echo -e "\n########################################################### "
+        echo "Checking Docker container logs for : $container_name"
+        docker logs --tail "$num_lines" "$container_name"
+    done
+}
+
 main(){
     echo -e "\n ## Print Device Details ######################################################### "
     device_details 
@@ -113,15 +148,21 @@ main(){
     echo -e "\n ## Dockerd status check ######################################################### "
     check_docker_daemon
     echo "Docker daemon is running. Continuing with the script..."
+
+    echo -e " \n ########################################################### "
+    echo -e " #################### Static ##############################"
+    echo -e " ###########################################################\n "
     
     echo -e "\n ## Trusted Repo Pull ######################################################### "
-
     echo -e "Checking if the DOCKER_CONTENT_TRUST variable is set in the environment \n"
     check_variable DOCKER_CONTENT_TRUST
 
     echo -e " \n ## Image Stat check #########################################################"
     echo -e " \n Checking the size and digest of the web and database images \n"
     search_docker_images $images_regx
+
+    echo -e " \n ## Dockerfile lint check #########################################################"
+    lint_dockerfiles
 
     echo -e " \n ## Image Scan #########################################################\n "
     run_trivy_scan
@@ -135,6 +176,9 @@ main(){
 
     echo -e " \n ## Checking Resource Limits #########################################################\n "
     check_docker_stats_resources
+
+    echo -e " \n ## Checking Container Logs #########################################################\n "
+    check_docker_container_logs
 }
 
 main "$@"
