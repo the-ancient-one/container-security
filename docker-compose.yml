@@ -28,7 +28,7 @@ services:
       - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d :ro
     security_opt:
       - "no-new-privileges=true"
-      # - "seccomp=default.json"
+      - "seccomp=seccomp/default.json"
     deploy:
       resources:
         limits:

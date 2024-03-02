@@ -23,4 +23,5 @@
 pid-file	= /var/run/mysqld/mysqld.pid
 socket		= /var/run/mysqld/mysqld.sock
 datadir		= /var/lib/mysql
-log-error	= /var/log/mysql/error.log
+log-error	=  /dev/stderr
+general_log_file = /dev/stdout
