@@ -258,6 +258,42 @@ function health_check(){
     done
 }
 
+function check_dockerfile_users_passwords() {
+    local compose_file="$1"
+
+    # Check if docker-compose.yml is provided
+    if [ -z "$compose_file" ]; then
+        echo "Error: docker-compose.yml not provided."
+        return 1
+    fi
+
+    # Check if docker-compose.yml exists
+    if [ ! -f "$compose_file" ]; then
+        echo "Error: docker-compose.yml $compose_file not found."
+        return 1
+    fi
+
+    # Extract Dockerfile paths from docker-compose.yml
+    dockerfile_paths=$(docker-compose -f  "$compose_file" config | awk '/context:/ { print $2 }')
+
+    # Check if any Dockerfile paths are found
+    if [ -z "$dockerfile_paths" ]; then
+        echo "Error: No Dockerfile paths found in docker-compose.yml."
+        return 1
+    fi
+
+    # Iterate over Dockerfile paths and check for Linux user or password-related commands
+    for path in $dockerfile_paths; do
+        grep -Ei 'user|passwd|password|chpasswd' "$path/Dockerfile" >/dev/null
+        if [ $? -eq 0 ]; then
+            echo -e "\nLinux user or password-related commands found in Dockerfile: $(basename "$path")/Dockerfile\n"
+        else
+            echo -e "\nNo Linux user or password-related commands found in Dockerfile:$(basename "$path")/Dockerfile\n"
+        fi
+    done
+}
+
+
 ########################################################### 
 ##################### Main Function #######################
 ###########################################################
@@ -296,6 +332,9 @@ main(){
 
     echo -e " \n ## Dockerfile lint check #########################################################"
     lint_dockerfiles
+
+    echo -e " \n ## Dockerfile User/Password check #########################################################"
+    check_dockerfile_users_passwords "../docker-compose.yml" # location of the docker-compose file 
 
     echo -e " \n ## Image Scan #########################################################\n "
     run_trivy_scan
