@@ -17,11 +17,13 @@ function device_details(){
 
     UNAME_MACHINE="$(/usr/bin/uname -m)"
 
+    echo -e "Bash version: $(bash --version | head -n 1) \n"
+
     if [[ "${UNAME_MACHINE}" == "arm64" ]]
     then
         system_profiler SPHardwareDataType  |egrep -E "Model Name|Model Identifier|Chip|Total Number of Cores|Memory|Hardware" | grep -v UUID
     else
-    echo -e "Not a macOS \n "
+    echo -e "Not a Apple Silicon macOS \n "
     fi
    
 }
@@ -108,15 +110,41 @@ function run_trivy_scan() {
 
 function check_secopt() {
     echo -e "Scanning Docker conatiner for SecurityOpt options \n"
-    echo "Container ID     | Seccomp Enabled | no-new-privileges Enabled"
+    echo "Container ID     | Seccomp Enabled | no-new-privileges Enabled | CgroupnsMode"
     echo "------------------------------------------------------------------"
     # Iterate over Docker images and filter them based on regex
     for container_id in $(docker ps --format "{{.Names}}"); do
         if [[ "$container_id" =~ $images_regx ]]; then
             local seccomp_enabled=$(docker inspect --format '{{ .HostConfig.SecurityOpt }}' "$container_id" | grep -c 'seccomp=')
             local no_new_privileges_enabled=$(docker inspect --format '{{ .HostConfig.SecurityOpt }}' "$container_id" | grep -c 'no-new-privileges=')
-            printf "%-16s | %-15s | %-24s\n" "$container_id" "$(if [ "$seccomp_enabled" -gt 0 ]; then echo "Yes"; else echo "No"; fi)" "$(if [ "$no_new_privileges_enabled" -gt 0 ]; then echo "Yes"; else echo "No"; fi)"
+            local cgroup_ns_mode=$(docker inspect --format='{{.HostConfig.CgroupnsMode}}'  "$container_id")
+            printf "%-16s | %-15s | %-15s | %-15s \n" "$container_id" "$(if [ "$seccomp_enabled" -gt 0 ]; then echo "Yes"; else echo "No"; fi)" "$(if [ "$no_new_privileges_enabled" -gt 0 ]; then echo "Yes"; else echo "No"; fi)" "$cgroup_ns_mode"
         fi
+    done
+}
+
+function print_capability_details() {
+    for container_id in $(docker ps --format "{{.Names}}"); do
+        echo -e "\n##> Printing Docker capability add and drop details for container ID: $container_id"
+        # Get the list of capabilities for the container
+        cap_add=$(docker inspect --format='{{.HostConfig.CapAdd}}' "$container_id")
+        cap_drop=$(docker inspect --format='{{.HostConfig.CapDrop}}' "$container_id")
+
+        # Print capability details in table format
+        echo "Capability Add Details:"
+        printf "%-30s | %-30s\n" "Container ID" "Capability"
+        echo "--------------------------------+--------------------------------"
+        for cap in ${cap_add//[\"[\]]}; do
+            printf "%-30s | %-30s\n" "$container_id" "$cap"
+        done
+
+        echo ""
+        echo "Capability Drop Details:"
+        printf "%-30s | %-30s\n" "Container ID" "Capability"
+        echo "--------------------------------+--------------------------------"
+        for cap in ${cap_drop//[\"[\]]}; do
+            printf "%-30s | %-30s\n" "$container_id" "$cap"
+        done
     done
 }
 
@@ -230,6 +258,9 @@ main(){
 
     echo -e " \n ## Checking SecurityOpt #########################################################\n "
     check_secopt
+
+    echo -e " \n ## Checking Capabilities #########################################################\n "
+    print_capability_details
 
     echo -e " \n ## Checking Container Resource #########################################################\n "
     check_docker_stats_resources

@@ -28,7 +28,7 @@ services:
       - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d :ro
     security_opt:
       - "no-new-privileges=true"
-      - "seccomp=seccomp/default.json"
+      - "seccomp=seccomp/mariadb.json"
     cap_drop:
       - ALL
     cap_add:
@@ -70,7 +70,7 @@ services:
       - csvs_dbserver
     security_opt:
       - "no-new-privileges=true"
-      - "seccomp=seccomp/default.json"
+      - "seccomp=seccomp/webapp.json"
     cap_drop:
       - ALL
     cap_add:
