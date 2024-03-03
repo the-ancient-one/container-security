@@ -10,7 +10,7 @@ networks:
 
 services:
   csvs_dbserver:
-    image: ${SID}_${DB_NAME}_i
+    image: ${SID}_${DB_NAME}_i:${DB_IMAGE_TAG}
     container_name: ${SID}_${DB_NAME}_c
     build:
       context: ${DB_PATH}
@@ -26,6 +26,8 @@ services:
     volumes:
       - db_data:/var/lib/mysql 
       - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d :ro
+    tmpfs:
+      - /tmp
     security_opt:
       - "no-new-privileges=true"
       - "seccomp=seccomp/mariadb.json"
@@ -53,7 +55,7 @@ services:
       retries: 3
 
   csvs_webserver:
-    image: ${SID}_${WEB_NAME}_i
+    image: ${SID}_${WEB_NAME}_i:${WEB_IMAGE_TAG}
     container_name: ${SID}_${WEB_NAME}_c
     build:
       context: ${WEB_PATH}
@@ -68,6 +70,8 @@ services:
       - "${DB_HOSTNAME}:${DB_IP}"
     depends_on:
       - csvs_dbserver
+    tmpfs:
+      - /tmp
     security_opt:
       - "no-new-privileges=true"
       - "seccomp=seccomp/webapp.json"

@@ -72,9 +72,7 @@
               "dup",        
               "listen",
               "fsync",
-              "fdatasync",       
-              "chmod",
-              "chown"
+              "fdatasync"
             ],
             "action": "SCMP_ACT_ALLOW"
         },
