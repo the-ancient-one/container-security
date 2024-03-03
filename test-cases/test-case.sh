@@ -7,8 +7,11 @@
 
 version='1.0'
 
-##################### Variables #####################
-images_regx="csvs"
+##################### Global Variables #####################
+
+images_regx="csvs" # Regular expression pattern for the images and containers to look for 
+
+packages=("hadolint" "trivy") # List of tools used in in making the script work. This will check and install only using brew else will error out.
 
 
 ##################### Functions #####################
@@ -17,10 +20,15 @@ function device_details(){
 
     UNAME_MACHINE="$(/usr/bin/uname -m)"
 
-    echo -e "Bash version: $(bash --version | head -n 1) \n"
+    echo -e "\n##> Bash version: $(bash --version | head -n 1) \n"
+
+    echo -e "##> Docker version: $(docker version) \n"
+
+    echo -e "##> docker-compose version: $(bash --version | head -n 1) \n"
 
     if [[ "${UNAME_MACHINE}" == "arm64" ]]
     then
+        echo "##> Hardware Details"
         system_profiler SPHardwareDataType  |egrep -E "Model Name|Model Identifier|Chip|Total Number of Cores|Memory|Hardware" | grep -v UUID
     else
     echo -e "Not a Apple Silicon macOS \n "
@@ -35,20 +43,29 @@ function check_docker_daemon() {
     fi
 }
 
-function check_package() {
-    echo "Checking if the $1 package is installed "
-    if which "$1" >/dev/null 2>&1; then
-        echo -e "$1 package is installed. \n"
-        return 1
-    else
-        echo -e "$1 package is not installed. \n"
-        return 0
-    fi
-}
+function pre_requisite_packages(){
+    local packages=("$@")
+    local installed_packages=()
 
-function pre_requisite(){
-    #the packages from brew and other things will go here.
-    echo "TO DO the function"
+    echo -e "\nChecking and installing packages from Brew...\n "
+
+    # Iterate over the list of packages
+    for package in "${packages[@]}"; do
+        # Check if the package is installed
+        if brew list --versions "$package" >/dev/null 2>&1; then
+            echo "$package is already installed."
+            installed_packages+=("$package")
+        else
+            # Install the package
+            echo "Installing $package..."
+            brew install "$package"
+            installed_packages+=("$package")
+        fi
+    done
+
+    # Print the list of installed packages
+    echo -e "\nInstalled packages:"
+    printf "%s\n" "${installed_packages[@]}"
 }
 
 function check_variable() {
@@ -110,7 +127,7 @@ function run_trivy_scan() {
 
 function check_secopt() {
     echo -e "Scanning Docker conatiner for SecurityOpt options \n"
-    echo "Container ID     | Seccomp Enabled | no-new-privileges Enabled | CgroupnsMode"
+    echo "Container ID     | Seccomp Enabled | no-new-privileges Enabled | CgroupnsMode | Privileged"
     echo "------------------------------------------------------------------"
     # Iterate over Docker images and filter them based on regex
     for container_id in $(docker ps --format "{{.Names}}"); do
@@ -118,7 +135,8 @@ function check_secopt() {
             local seccomp_enabled=$(docker inspect --format '{{ .HostConfig.SecurityOpt }}' "$container_id" | grep -c 'seccomp=')
             local no_new_privileges_enabled=$(docker inspect --format '{{ .HostConfig.SecurityOpt }}' "$container_id" | grep -c 'no-new-privileges=')
             local cgroup_ns_mode=$(docker inspect --format='{{.HostConfig.CgroupnsMode}}'  "$container_id")
-            printf "%-16s | %-15s | %-15s | %-15s \n" "$container_id" "$(if [ "$seccomp_enabled" -gt 0 ]; then echo "Yes"; else echo "No"; fi)" "$(if [ "$no_new_privileges_enabled" -gt 0 ]; then echo "Yes"; else echo "No"; fi)" "$cgroup_ns_mode"
+            local privileged_flag=$(docker inspect --format='{{.HostConfig.Privileged}}'  "$container_id")
+            printf "%-16s | %-15s | %-15s | %-15s | %-15s \n" "$container_id" "$(if [ "$seccomp_enabled" -gt 0 ]; then echo "Yes"; else echo "No"; fi)" "$(if [ "$no_new_privileges_enabled" -gt 0 ]; then echo "Yes"; else echo "No"; fi)" "$cgroup_ns_mode" "$privileged_flag"
         fi
     done
 }
@@ -131,18 +149,18 @@ function print_capability_details() {
         cap_drop=$(docker inspect --format='{{.HostConfig.CapDrop}}' "$container_id")
 
         # Print capability details in table format
-        echo "Capability Add Details:"
-        printf "%-30s | %-30s\n" "Container ID" "Capability"
-        echo "--------------------------------+--------------------------------"
-        for cap in ${cap_add//[\"[\]]}; do
-            printf "%-30s | %-30s\n" "$container_id" "$cap"
-        done
-
         echo ""
         echo "Capability Drop Details:"
         printf "%-30s | %-30s\n" "Container ID" "Capability"
         echo "--------------------------------+--------------------------------"
         for cap in ${cap_drop//[\"[\]]}; do
+            printf "%-30s | %-30s\n" "$container_id" "$cap"
+        done
+
+        echo "Capability Add Details:"
+        printf "%-30s | %-30s\n" "Container ID" "Capability"
+        echo "--------------------------------+--------------------------------"
+        for cap in ${cap_add//[\"[\]]}; do
             printf "%-30s | %-30s\n" "$container_id" "$cap"
         done
     done
@@ -221,8 +239,14 @@ function validate_compose_config() {
 ###########################################################
 
 main(){
+    echo -e " \n ########################################################### "
+    echo -e " ############## Device and Package Version #################"
+    echo -e " ###########################################################\n "
     echo -e "\n ## Print Device Details ######################################################### "
     device_details 
+
+    echo -e "\n ## Dependent Tool Check Details (Please note this will check only for Brew) ######################################################### "
+    pre_requisite_packages "${packages[@]}"
     
     echo -e "\n ## Dockerd status check ######################################################### "
     check_docker_daemon
