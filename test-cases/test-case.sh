@@ -79,9 +79,9 @@ function check_variable() {
 function search_docker_images() {
     local regex="$1"
         echo "## Size ##"
-    printf "%-30s | %-30s\n" "Image" "Size"
-    echo "--------------------------------+--------------------------------"
-    docker images --format "{{.Repository}}:{{.Tag}} | {{.Size}}" | grep -i "$regex"
+    printf "%-30s | %-7s | %-70s \n" "Image" "Size" "Id/Digest(sha256)"
+    echo "-------------------------------+---------+------------------------------------------------------------------------"
+    docker images --no-trunc --format "{{.Repository}}:{{.Tag}} | {{.Size}} | {{.ID}}" | grep -i "$regex"
     echo ""
     
     echo "## Digest ##"
@@ -233,6 +233,30 @@ function validate_compose_config() {
     done
 }
 
+function check_volume_binds() {
+    for container_id in $(docker ps --format "{{.Names}}"); do
+
+        echo -e "\n##> Checking Docker Volume details for : $container_id \n"
+
+        # Get the volume host binds in the specified format
+        volume_binds=$(docker inspect --format='{{range .Mounts}}{{.Type}} | {{.Destination}} | {{.Mode}} | {{.RW}} | {{"\n"}}{{end}}' "$container_id")
+
+        # Print volume host binds with space as the heading
+        echo "Volume Host Binds:"
+        printf "%-10s %-30s %-10s %-10s\n" "Type" "Destination" "Mode" "Read/Write"
+        echo "------+--------------------------------+------------+------------"
+        echo "$volume_binds"
+    done
+}
+
+function health_check(){   
+    printf "%-10s %-8s %-8s %-8s %-10s\n" "Conatiner" "Interval" "Timeout" "Retries" "Test CMD"
+    echo "----------+--------+--------+--------+----------------------------------------"
+    for container_id in $(docker ps --format "{{.Names}}"); do
+        healthcheck=$(docker inspect --format=' {{.Config.Healthcheck.Interval}} | {{.Config.Healthcheck.Timeout}} | {{.Config.Healthcheck.Retries}} | {{if .State.Health}} "{{range .Config.Healthcheck.Test}} {{.}}{{end}}"  {{"\n"}}{{end}}' "$container_id")
+        echo "$container_id" "|" "$healthcheck"
+    done
+}
 
 ########################################################### 
 ##################### Main Function #######################
@@ -288,6 +312,12 @@ main(){
 
     echo -e " \n ## Checking Container Resource #########################################################\n "
     check_docker_stats_resources
+
+    echo -e " \n ## Checking Volume Permissions #########################################################\n "
+    check_volume_binds
+
+    echo -e " \n ## Checking Container Healthcheck Details #########################################################\n "
+    health_check
 
     echo -e " \n ## Checking Container Logs #########################################################\n "
     check_docker_container_logs
