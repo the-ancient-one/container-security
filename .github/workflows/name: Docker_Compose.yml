@@ -22,3 +22,4 @@ jobs:
       - name: Build and push Docker Compose services
         run: |
           docker-compose build
+          docker-compose push

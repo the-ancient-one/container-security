@@ -8,6 +8,8 @@
 | ------------------ | ------------------------------------------ |
 | `./`                | Root directory of the project.             |
 | `.env`                | Environment file containing all the variables used in docker-compose.             |
+| `./.git/`                | Directory containing git repo config and objects.             |
+| `./.github/`                | Directory containing GitHub Actions and workflow realted to the repo.             |
 | `./docker-compose.yml` | Docker Compose configuration file.         |
 | `./webserver/`    | Directory containing application web artifactes(including Dockerfile).       |
 | `./dbserver/`    | Directory containing application database artifactes(including Dockerfile).        |
@@ -22,6 +24,11 @@
 .
 ├── README.md
 ├── .env
+├── .git/
+├── .github
+│   └── workflows
+│       └── name: Docker_Compose.yml
+├── VideoReadME.md
 ├── dbserver
 │   ├── Dockerfile
 │   ├── db_password.txt
@@ -60,6 +67,8 @@
         └── style.css
 ```
 
+> Important Note : The Image tag/version is controlled from .env file with respective app names. For Kubernetes this is hardcoded aganist images, as an improvment this should be converted to Helm charts with Templates, Charts and Values.
+
 ## Usage
 
 1. Make sure you have Docker installed on your system.
@@ -85,9 +94,34 @@
     ```
 
     This will run the `test_case.sh` script and execute the predefined test cases.
+
+## Github Action 
+
+The GitHub Actions is a powerful automation tool integrated within GitHub, enabling to automate workflows directly within their repositories. It has been used for the creation of custom CI/CD pipelines, and build->pushing images to registry, streamlining development workflows and enhancing collaboration among development teams.
+
 ## Kubernetes
 
 The Kubernetes is essential as it provides a scalable, flexible, and resilient platform for containerized applications. Kubernetes offers built-in features such as automated scaling, rolling updates, and service discovery, enabling seamless management of applications across hybrid and multi-cloud environments. However, this has only been added to demostrate future-proofing and cloud agnostic requriment of the application CI/CD ecosystem.
+
+   ```bash
+    cd ./kubectl_yml/
+    #K8s Volumnes deployment     
+    kubectl apply -f db-data-persistentvolumeclaim.yaml
+    kubectl apply -f csvs-dbserver-claim1-persistentvolumeclaim.yaml
+    #K8s Secret deployment  
+    kubectl apply -f db-password-secret.yaml
+    #K8s Service deployment  
+    kubectl apply -f csvs_dbserver-service.yaml
+    kubectl apply -f csvs_webserver-service.yaml
+    #K8s Application deployment  
+    kubectl apply -f csvs-webserver-deployment.yaml
+    kubectl apply -f csvs-dbserver-deployment.yaml
+
+    #K8s Dashboard deployment (for UI interface https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/,
+    # alternative cli tool https://k9scli.io/) 
+    kubectl apply -f service-acc.yaml
+    kubectl apply -f cluster-rbac.yaml
+   ```
 
 
 Feel free to modify the folder structure and adapt the usage instructions according to your specific project needs.
