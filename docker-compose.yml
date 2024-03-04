@@ -1,5 +1,6 @@
 version: "3"
 
+# All the variables are defined in the .env file
 networks:
   csvs_dbserver_net:
     driver: bridge
@@ -9,6 +10,7 @@ networks:
         - subnet: ${SUBNET}
 
 services:
+  # This is the configuration for the database server
   csvs_dbserver:
     image: ${SID}_${DB_NAME}_i:${DB_IMAGE_TAG}
     container_name: ${SID}_${DB_NAME}_c
@@ -25,7 +27,7 @@ services:
       MYSQL_DATABASE: "${DB_DATABASE}"
     volumes:
       - db_data:/var/lib/mysql 
-      - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d :ro
+      - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d :ro # Mounting SQL configuration files as read-only
     tmpfs:
       - /tmp
     security_opt:
@@ -42,18 +44,18 @@ services:
         limits:
           cpus: '0.2'
           memory: 512M
-          # pids: 15
+          pids: 15
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "healthcheck.sh --su-mysql --connect --innodb_initialized || exit 1"]
-      interval: 30s
+      test: ["CMD-SHELL", "healthcheck.sh --su-mysql --connect --innodb_initialized || exit 1"]  #Health check command for the database server
+      interval: 30s 
       timeout: 10s
       retries: 3
-
+# This is the configuration for the webserver server
   csvs_webserver:
     image: ${SID}_${WEB_NAME}_i:${WEB_IMAGE_TAG}
     container_name: ${SID}_${WEB_NAME}_c
@@ -86,25 +88,25 @@ services:
         limits:
           cpus: '0.1'
           memory: 100M
-          # pids: 30
+          pids: 30
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     secrets:
-      - db_password 
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost  || exit 1"]
-      interval: 30s
+      - db_password # Mounting the secret for the database password
+    healthcheck: 
+      test: ["CMD-SHELL", "curl -f http://localhost  || exit 1"] # Health check command for the web server
+      interval: 30s     
       timeout: 10s
       retries: 3
       
 secrets:
   db_password:
-    file: dbserver/db_password.txt
+    file: dbserver/db_password.txt # Path to the file containing the database password secret
   db_root_password:
-    file: dbserver/db_root_password.txt
+    file: dbserver/db_root_password.txt #Path to the file containing the root password secret
 
 volumes:
   db_data:

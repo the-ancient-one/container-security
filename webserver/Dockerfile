@@ -6,6 +6,7 @@ FROM rockylinux:9.3
 LABEL mantainer="RickRoll"
 LABEL description="PHP-App Webserver Docker image"
 
+# Install Nginx and PHP and clean up to reduce the image size
 RUN yum update -y && \
 	yum install -y \
 	nginx-1:1.20.1-14.el9_2.1 \
@@ -26,7 +27,7 @@ COPY configfiles/docker-entrypoint.sh /
 RUN rm -f /var/www/html/index.html /var/www/html/nginx-logo.png /var/www/html/poweredby.png  && \
 	chmod +x /docker-entrypoint.sh && \
     chown nginx:nginx /var/www/html/*.php && \
-	ln -sf /dev/stdout /var/log/nginx/access.log && \
+	ln -sf /dev/stdout /var/log/nginx/access.log && \ 
 	ln -sf /dev/stderr /var/log/nginx/error.log 
 
 

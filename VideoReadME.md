@@ -1,0 +1,25 @@
+## The Following Readme contains highlights or details from the video.
+
+- As showing in docker desktop no images and containers are present. 
+- The original provided make files were used to create the images in theie initial state provided for the assignment.
+- This create will help demonstarate the difference in the original and modified image and container security enhancement.
+- Can see in docker desktop the images and containers are visible.
+- Can access and add data to the Original application UI on http://localhost:8080 .
+- docker-compose build was used to build the modified application.
+- Can see in docker desktop the images and containers are visible with relavent Tag as well.
+- `docker-compose up --force-recreate  -d` was used to force-recreate the conatiners and services in detached mode.
+- Can access and add data to the Modified application UI on http://localhost.
+- Modified application was taken down using `docker-compose down`
+- Modified application conatiners were recreated. Can see the data persistent and application working fine.
+- `bash test_case.sh` script was used to display the test results.
+- Highlighting the versions of respective tools which are used, `Note: faced issue when checking in VM, turned out the bash version was lower, hence recommened using the mentioned tool vesions to help run smoothly`.
+- Highlight the following relavent details from test results 
+    - Docker compose Healthcheck, Loggin and Resource limiting.
+    - Vulnerabilities from original webserver docker image.
+    - No Vulnerabilities present in the modified webserver and database docker image.
+    - SecurityOpt seccomp,no-new-rpivilage enabled in new containers, disabling of privilage flag from the database.
+    - Added and Dropped Capabilities in the new containers and they were absent in original image.
+    - Showing the resource limiting in effect in new containers and absent in original ones.
+    - Volume configurations with read-only bind and selinux (z) file systems restriction.
+    - Configured Healthcheck parameters from new containers inspect. 
+    - Loggin from modified containers showing webservice logs.

@@ -101,7 +101,7 @@ The GitHub Actions is a powerful automation tool integrated within GitHub, enabl
 
 ## Kubernetes
 
-The Kubernetes is essential as it provides a scalable, flexible, and resilient platform for containerized applications. Kubernetes offers built-in features such as automated scaling, rolling updates, and service discovery, enabling seamless management of applications across hybrid and multi-cloud environments. However, this has only been added to demostrate future-proofing and cloud agnostic requriment of the application CI/CD ecosystem.
+The Kubernetes is essential as it provides a scalable, flexible, and resilient platform for containerised applications. Kubernetes offers built-in features such as automated scaling, rolling updates, and service discovery, enabling seamless management of applications across hybrid and multi-cloud environments. However, this has only been added to demonstrate future-proofing and cloud agnostic requirement of the application CI/CD ecosystem.
 
    ```bash
     cd ./kubectl_yml/

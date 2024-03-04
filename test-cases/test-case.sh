@@ -9,23 +9,30 @@ version='1.0'
 
 ##################### Global Variables #####################
 
-images_regx="csvs" # Regular expression pattern for the images and containers to look for 
+# Regular expression pattern for the images and containers to look for
+images_regx="csvs"  
 
-packages=("hadolint" "trivy") # List of tools used in in making the script work. This will check and install only using brew else will error out.
+# List of pre-requisite packages to check and install
+# List of tools used in in making the script work. This will check and install only using brew else will error out.
+packages=("hadolint" "trivy") 
 
 
 ##################### Functions #####################
 
+# Function to print the device details and package version
 function device_details(){
 
+    # Get the OS details
     UNAME_MACHINE="$(/usr/bin/uname -m)"
 
+    # Print Bash, Docker and docker-compose version
     echo -e "\n##> Bash version: $(bash --version | head -n 1) \n"
 
     echo -e "##> Docker version: $(docker version) \n"
 
     echo -e "##> docker-compose version: $(bash --version | head -n 1) \n"
 
+    # Print the machine details
     if [[ "${UNAME_MACHINE}" == "arm64" ]]
     then
         echo "##> Hardware Details"
@@ -36,6 +43,7 @@ function device_details(){
    
 }
 
+# Function to check if the Docker daemon is running
 function check_docker_daemon() {
     if ! docker info >/dev/null 2>&1; then
         echo "Docker daemon is not running. Exiting..."
@@ -43,6 +51,7 @@ function check_docker_daemon() {
     fi
 }
 
+# Function to check and install pre-requisite packages
 function pre_requisite_packages(){
     local packages=("$@")
     local installed_packages=()
@@ -68,6 +77,7 @@ function pre_requisite_packages(){
     printf "%s\n" "${installed_packages[@]}"
 }
 
+# Function to check if DOCKER_CONTENT_TRUST variable is set for pulling trusted images
 function check_variable() {
     if [[ -v $1 ]]; then
         echo "$1 is set."
@@ -76,7 +86,9 @@ function check_variable() {
     fi
 }
 
+# Function to search for Docker images and their sizes
 function search_docker_images() {
+    # Check if a regex pattern is provided
     local regex="$1"
         echo "## Size ##"
     printf "%-30s | %-7s | %-70s \n" "Image" "Size" "Id/Digest(sha256)"
@@ -90,6 +102,7 @@ function search_docker_images() {
     docker image ls --digests --format '{{.Repository}}:{{.Tag}} | {{.Digest}}' | egrep "rockylinux|mariadb|$regex"
 }
 
+# Function to lint Dockerfiles using hadolint
 function lint_dockerfiles() {
     local search_dir="../"
 
@@ -110,6 +123,7 @@ function lint_dockerfiles() {
     done
 }
 
+# Function to run Trivy scan on Docker images
 function run_trivy_scan() {
         echo -e "Scanning Docker images vulnerabilities, misconfiguration and secrets \n"
 
@@ -125,6 +139,7 @@ function run_trivy_scan() {
         done
 }
 
+# Function to check SecurityOpt options for Docker containers
 function check_secopt() {
     echo -e "Scanning Docker conatiner for SecurityOpt options \n"
     echo "Container ID     | Seccomp Enabled | no-new-privileges Enabled | CgroupnsMode | Privileged"
@@ -132,18 +147,24 @@ function check_secopt() {
     # Iterate over Docker images and filter them based on regex
     for container_id in $(docker ps --format "{{.Names}}"); do
         if [[ "$container_id" =~ $images_regx ]]; then
+            # Get the list of security options for the container
             local seccomp_enabled=$(docker inspect --format '{{ .HostConfig.SecurityOpt }}' "$container_id" | grep -c 'seccomp=')
             local no_new_privileges_enabled=$(docker inspect --format '{{ .HostConfig.SecurityOpt }}' "$container_id" | grep -c 'no-new-privileges=')
             local cgroup_ns_mode=$(docker inspect --format='{{.HostConfig.CgroupnsMode}}'  "$container_id")
             local privileged_flag=$(docker inspect --format='{{.HostConfig.Privileged}}'  "$container_id")
+
+            # Print security options in table format
             printf "%-16s | %-15s | %-15s | %-15s | %-15s \n" "$container_id" "$(if [ "$seccomp_enabled" -gt 0 ]; then echo "Yes"; else echo "No"; fi)" "$(if [ "$no_new_privileges_enabled" -gt 0 ]; then echo "Yes"; else echo "No"; fi)" "$cgroup_ns_mode" "$privileged_flag"
         fi
     done
 }
 
+# Function to print Docker capability add and drop details for containers
 function print_capability_details() {
+    # Iterate over Docker images and filter them based on regex
     for container_id in $(docker ps --format "{{.Names}}"); do
         echo -e "\n##> Printing Docker capability add and drop details for container ID: $container_id"
+
         # Get the list of capabilities for the container
         cap_add=$(docker inspect --format='{{.HostConfig.CapAdd}}' "$container_id")
         cap_drop=$(docker inspect --format='{{.HostConfig.CapDrop}}' "$container_id")
@@ -166,7 +187,10 @@ function print_capability_details() {
     done
 }
 
+# Function to check Docker container resource limits
 function check_docker_stats_resources() {
+
+    # Print table headers
     echo "Checking Docker container resource limits..."
     printf "%-15s | %-25s | %-15s | %-15s | %-15s | %-15s | %-15s | %-15s\n" "Container ID" "Name" "CPU Usage" "Memory Usage" "Memory Percentage" "Network I/O" "Block I/O" "PIDs"
 
@@ -186,6 +210,7 @@ function check_docker_stats_resources() {
     done
 }
 
+# Function to check Docker container logs
 function check_docker_container_logs() {
     local num_lines="${2:-10}"          
     # Iterate over Docker images and filter them based on regex
@@ -196,6 +221,7 @@ function check_docker_container_logs() {
     done
 }
 
+# Function to validate Docker Compose configuration
 function validate_compose_config() {
     local compose_file="$1"
 
@@ -205,6 +231,7 @@ function validate_compose_config() {
         return 1
     fi
 
+    # Lint the Docker Compose file
     echo "Docker-compose configuration linting: "
     docker-compose -f $compose_file config --quiet && printf "OK\n" || printf "ERROR\n"
 
@@ -233,6 +260,7 @@ function validate_compose_config() {
     done
 }
 
+# Function to check Docker volume binds
 function check_volume_binds() {
     for container_id in $(docker ps --format "{{.Names}}"); do
 
@@ -249,15 +277,21 @@ function check_volume_binds() {
     done
 }
 
+# Function to check Docker container healthcheck details
 function health_check(){   
+
+    # Print table headers
     printf "%-10s %-8s %-8s %-8s %-10s\n" "Conatiner" "Interval" "Timeout" "Retries" "Test CMD"
     echo "----------+--------+--------+--------+----------------------------------------"
     for container_id in $(docker ps --format "{{.Names}}"); do
+        # Get the healthcheck details for the container
         healthcheck=$(docker inspect --format=' {{.Config.Healthcheck.Interval}} | {{.Config.Healthcheck.Timeout}} | {{.Config.Healthcheck.Retries}} | {{if .State.Health}} "{{range .Config.Healthcheck.Test}} {{.}}{{end}}"  {{"\n"}}{{end}}' "$container_id")
+        # Print healthcheck details in table format
         echo "$container_id" "|" "$healthcheck"
     done
 }
 
+# Function to check Dockerfile for Linux user or password-related commands
 function check_dockerfile_users_passwords() {
     local compose_file="$1"
 
@@ -298,6 +332,7 @@ function check_dockerfile_users_passwords() {
 ##################### Main Function #######################
 ###########################################################
 
+# Main function to call all the functions
 main(){
     echo -e " \n ########################################################### "
     echo -e " ############## Device and Package Version #################"
@@ -365,5 +400,5 @@ main(){
 ########################################################### 
 ################## Main Function Call #####################
 ###########################################################
-
+# Call the main function with all the arguments
 main "$@"
