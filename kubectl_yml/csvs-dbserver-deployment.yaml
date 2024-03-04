@@ -27,8 +27,9 @@ spec:
         io.kompose.service: csvs-dbserver
     spec:
       containers:
-        - image: u5577491_csvs_dbserver_i
+        - image: u5577491_csvs_dbserver_i:1.5
           name: u5577491-csvs-dbserver-c
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3306
               hostPort: 3306
@@ -43,7 +44,13 @@ spec:
             - mountPath: '/docker-entrypoint-initdb.d '
               name: csvs-dbserver-claim1
               readOnly: true
-      hostname: db.cyber23.test
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom: 
+                secretKeyRef:
+                  name: db-root-password
+                  key: password
+      hostname: dbcyber23test
       restartPolicy: Always
       volumes:
         - name: db-data
