@@ -334,67 +334,83 @@ function check_dockerfile_users_passwords() {
 
 # Main function to call all the functions
 main(){
-    echo -e " \n ########################################################### "
-    echo -e " ############## Device and Package Version #################"
-    echo -e " ###########################################################\n "
-    echo -e "\n ## Print Device Details ######################################################### "
-    device_details 
+    local action="$1"
 
-    echo -e "\n ## Dependent Tool Check Details (Please note this will check only for Brew) ######################################################### "
-    pre_requisite_packages "${packages[@]}"
-    
-    echo -e "\n ## Dockerd status check ######################################################### "
-    check_docker_daemon
-    echo "Docker daemon is running. Continuing with the script..."
+    case "$action" in
+        "device" | "all" )
+            echo -e " \n ########################################################### "
+            echo -e " ############## Device and Package Version #################"
+            echo -e " ###########################################################\n "
+            echo -e "\n ## Print Device Details ######################################################### "
+            device_details 
 
-    echo -e " \n ########################################################### "
-    echo -e " #################### Docker-compose #######################"
-    echo -e " ###########################################################\n "
-    echo -e "Checking docker-compose configuration details \n"
-    validate_compose_config "../docker-compose.yml" # location of the docker-compose file 
+            echo -e "\n ## Dependent Tool Check Details (Please note this will check only for Brew) ######################################################### "
+            pre_requisite_packages "${packages[@]}"
+                           
+            echo -e "\n ## Dockerd status check ######################################################### "
+            check_docker_daemon
+            echo "Docker daemon is running. Continuing with the script..."
+            ;;  
+        
+        "compose" | "static" | "all")   
+            echo -e " \n ########################################################### "
+            echo -e " #################### Docker-compose #######################"
+            echo -e " ###########################################################\n "
+            echo -e "Checking docker-compose configuration details \n"
+            validate_compose_config "../docker-compose.yml" # location of the docker-compose file 
 
-    echo -e " \n \n ########################################################### "
-    echo -e " #################### Static ###############################"
-    echo -e " ###########################################################\n "
-    
-    echo -e "\n ## Trusted Repo Pull ######################################################### "
-    echo -e "Checking if the DOCKER_CONTENT_TRUST variable is set in the environment \n"
-    check_variable DOCKER_CONTENT_TRUST 
+            echo -e " \n \n ########################################################### "
+            echo -e " #################### Static ###############################"
+            echo -e " ###########################################################\n "
+            
+            echo -e "\n ## Trusted Repo Pull ######################################################### "
+            echo -e "Checking if the DOCKER_CONTENT_TRUST variable is set in the environment \n"
+            check_variable DOCKER_CONTENT_TRUST 
 
-    echo -e " \n ## Image Stat check #########################################################"
-    echo -e " \n Checking the size and digest of the web and database images \n"
-    search_docker_images $images_regx # Variable declared in the top section
+            echo -e " \n ## Image Stat check #########################################################"
+            echo -e " \n Checking the size and digest of the web and database images \n"
+            search_docker_images $images_regx # Variable declared in the top section
 
-    echo -e " \n ## Dockerfile lint check #########################################################"
-    lint_dockerfiles
+            echo -e " \n ## Dockerfile lint check #########################################################"
+            lint_dockerfiles
 
-    echo -e " \n ## Dockerfile User/Password check #########################################################"
-    check_dockerfile_users_passwords "../docker-compose.yml" # location of the docker-compose file 
+            echo -e " \n ## Dockerfile User/Password check #########################################################"
+            check_dockerfile_users_passwords "../docker-compose.yml" # location of the docker-compose file          
+            
+            echo -e " \n ## Image Scan #########################################################\n "
+            run_trivy_scan
+             ;;
 
-    echo -e " \n ## Image Scan #########################################################\n "
-    run_trivy_scan
+        "runtime" | "all")
+            echo -e " \n ########################################################### "
+            echo -e " #################### Runtime ##############################"
+            echo -e " ###########################################################\n "
 
-    echo -e " \n ########################################################### "
-    echo -e " #################### Runtime ##############################"
-    echo -e " ###########################################################\n "
+            echo -e " \n ## Checking SecurityOpt #########################################################\n "
+            check_secopt
 
-    echo -e " \n ## Checking SecurityOpt #########################################################\n "
-    check_secopt
+            echo -e " \n ## Checking Capabilities #########################################################\n "
+            print_capability_details
 
-    echo -e " \n ## Checking Capabilities #########################################################\n "
-    print_capability_details
+            echo -e " \n ## Checking Container Resource #########################################################\n "
+            check_docker_stats_resources
 
-    echo -e " \n ## Checking Container Resource #########################################################\n "
-    check_docker_stats_resources
+            echo -e " \n ## Checking Volume Permissions #########################################################\n "
+            check_volume_binds
 
-    echo -e " \n ## Checking Volume Permissions #########################################################\n "
-    check_volume_binds
+            echo -e " \n ## Checking Container Healthcheck Details #########################################################\n "
+            health_check
 
-    echo -e " \n ## Checking Container Healthcheck Details #########################################################\n "
-    health_check
-
-    echo -e " \n ## Checking Container Logs #########################################################\n "
-    check_docker_container_logs
+            echo -e " \n ## Checking Container Logs #########################################################\n "
+            check_docker_container_logs
+            ;;
+        *)
+            echo "Invalid action: $action"
+            echo "Usage: $0 [device | static | compose | runtime | all]"
+            exit 1
+            ;;
+        
+    esac
 }
 
 ########################################################### 
