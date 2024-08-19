@@ -2,6 +2,10 @@
 ## University of Warwick 
 ### $${\color{red}(Read \space the \space following \space file \space carefully!)}$$ 
 
+[![Docker Compose CI/CD Pipeline](https://github.com/the-ancient-one/container-security/actions/workflows/name:%20Docker_Compose.yml/badge.svg?branch=main)](https://github.com/the-ancient-one/container-security/actions/workflows/name:%20Docker_Compose.yml)
+
+DOI Status: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13341688.svg)](https://doi.org/10.5281/zenodo.13341688)
+
 ## Folder Structure
 
 | File/Folder        | Description                                |
