@@ -43,6 +43,7 @@
               "recvfrom",
               "setsockopt",
               "clone",
+              "clone3",
               "wait4",
               "poll",
               "getcwd",

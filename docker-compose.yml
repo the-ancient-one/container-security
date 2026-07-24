@@ -27,7 +27,7 @@ services:
       MYSQL_DATABASE: "${DB_DATABASE}"
     volumes:
       - db_data:/var/lib/mysql 
-      - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d :ro # Mounting SQL configuration files as read-only
+      - ./dbserver/sqlconfig:/docker-entrypoint-initdb.d:ro # Mounting SQL configuration files as read-only
     tmpfs:
       - /tmp
     security_opt:
@@ -44,7 +44,7 @@ services:
         limits:
           cpus: '0.2'
           memory: 512M
-          pids: 15
+          pids: 100
     logging:
       driver: "json-file"
       options:
@@ -110,5 +110,3 @@ secrets:
 
 volumes:
   db_data:
-    driver_opts:
-      size: 500MiB
