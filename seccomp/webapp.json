@@ -299,7 +299,13 @@
 				"writev",
 				"arch_prctl",
 				"modify_ldt",
-				"clone"
+				"clone","statx",
+				"openat2",
+				"close_range",
+				"clone3",
+				"mkdir",
+				"pidfd_open",
+				"futex_waitv"
 		],
 		"action": "SCMP_ACT_ALLOW"
 	}
