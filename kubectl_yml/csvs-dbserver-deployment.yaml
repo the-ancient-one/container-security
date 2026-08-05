@@ -4,60 +4,100 @@ metadata:
   annotations:
     kompose.cmd: kompose --file docker-compose.yml convert
     kompose.version: 1.30.0 (HEAD)
-  creationTimestamp: null
   labels:
     io.kompose.service: csvs-dbserver
   name: csvs-dbserver
-  namespace: default
+  namespace: csvs                            # CKV_K8S_21: dedicated namespace 
 spec:
   replicas: 1
   selector:
     matchLabels:
       io.kompose.service: csvs-dbserver
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   template:
     metadata:
-      annotations:
-        kompose.cmd: kompose --file docker-compose.yml convert
-        kompose.version: 1.30.0 (HEAD)
-      creationTimestamp: null
       labels:
-        io.kompose.network/helm-chart-csvs-dbserver-net: "true"
         io.kompose.service: csvs-dbserver
     spec:
+      automountServiceAccountToken: false    # CKV_K8S_38: DB pod needs no K8s API access
+
+      securityContext:                        # CKV_K8S_29: pod-level security context
+        runAsNonRoot: true                    # CKV_K8S_23: never run as root
+        runAsUser: 999                        # UID of mysql user in official MariaDB image
+        runAsGroup: 999
+        fsGroup: 999                          # ensures /var/lib/mysql volume writable by mysql group
+        seccompProfile:
+          type: RuntimeDefault               # restrict syscalls to safe default set
+
       containers:
-        - image: u123456_csvs_dbserver_i:1.5
-          name:  u123456-csvs-dbserver-c
+        - name: u123456-csvs-dbserver-c
+          image: u123456_csvs_dbserver_i:1.5
           imagePullPolicy: Never
+          env:
+            - name: MARIADB_ROOT_PASSWORD_FILE
+              value: /run/secrets/db_root_password          
           ports:
             - containerPort: 3306
-              hostPort: 3306
               protocol: TCP
+
+          securityContext:                    # CKV_K8S_30: container-level security context
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 999
+            capabilities:
+              drop:
+                - ALL                        # CKV_K8S_37: drop all caps
+                                             # CKV_K8S_28: NET_RAW dropped as part of ALL
+
+          livenessProbe:                      # CKV_K8S_8: detect if MariaDB process is alive
+            exec:
+              command:
+                - healthcheck.sh
+                - --connect
+                - --innodb_initialized
+            initialDelaySeconds: 60          # MariaDB needs time on first run to init system tables
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:                     # CKV_K8S_9: only route traffic when DB is accepting connections
+            exec:
+              command:
+                - healthcheck.sh
+                - --connect
+                - --innodb_initialized
+            initialDelaySeconds: 30          # shorter than liveness — checks readiness sooner
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
           resources:
             limits:
               cpu: 200m
-              memory: "536870912"
+              memory: "536870912"            # 512Mi
+
           volumeMounts:
-            - mountPath: '/var/lib/mysql '
-              name: db-data
-            - mountPath: '/docker-entrypoint-initdb.d '
-              name: csvs-dbserver-claim1
+            - name: db-data
+              mountPath: /var/lib/mysql      # persistent storage for MariaDB data
+            - name: db-root-password
+              mountPath: /run/secrets/db_root_password
+              subPath: db_root_password      # mounts single file, not whole directory
               readOnly: true
-          env:
-            - name: MYSQL_ROOT_PASSWORD
-              valueFrom: 
-                secretKeyRef:
-                  name: db-root-password
-                  key: password
-      hostname: dbcyber23test
+
       restartPolicy: Always
+
       volumes:
         - name: db-data
           persistentVolumeClaim:
-            claimName: db-data
-        - name: csvs-dbserver-claim1
-          persistentVolumeClaim:
-            claimName: csvs-dbserver-claim1
-            readOnly: true
-status: {}
+            claimName: db-data              # must exist in csvs namespace
+
+        - name: db-root-password
+          secret:
+            secretName: db-root-password    # must exist in csvs namespace
+            items:
+              - key: db-root-password       # hyphen: matches actual K8s secret key
+                path: db_root_password      # underscore: filename inside container

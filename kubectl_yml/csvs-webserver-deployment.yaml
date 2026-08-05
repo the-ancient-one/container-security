@@ -7,7 +7,7 @@ metadata:
   labels:
     io.kompose.service: csvs-webserver
   name: csvs-webserver
-  namespace: default
+  namespace: csvs
 spec:
   type: NodePort                        # LoadBalancer → NodePort (works on minikube without tunnel)
   selector:
@@ -30,7 +30,7 @@ metadata:
   labels:
     io.kompose.service: csvs-webserver
   name: csvs-webserver
-  namespace: default
+  namespace: csvs
 spec:
   replicas: 1
   selector:

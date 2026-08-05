@@ -7,16 +7,16 @@ metadata:
   labels:
     io.kompose.service: csvs-webserver
   name: csvs-webserver
-  namespace: default
+  namespace: csvs
 spec:
-  type: NodePort                        # Changed from default ClusterIP → allows external access
+  type: NodePort                         
   selector:
-    io.kompose.service: csvs-webserver  # Matches pod label io.kompose.service=csvs-webserver
+    io.kompose.service: csvs-webserver   
   ports:
     - name: "80"
       protocol: TCP
-      port: 80                          # Port the service listens on internally
-      targetPort: 80                    # Port on the Nginx pod
-      nodePort: 30080                   # External port on the minikube node (range 30000-32767)
+      port: 80                           
+      targetPort: 80                    
+      nodePort: 30080                   
 status:
   loadBalancer: {}

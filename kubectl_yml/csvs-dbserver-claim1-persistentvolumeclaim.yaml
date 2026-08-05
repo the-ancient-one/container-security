@@ -1,11 +1,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  creationTimestamp: null
   labels:
     io.kompose.service: csvs-dbserver-claim1
   name: csvs-dbserver-claim1
-  namespace: default
+  namespace: csvs
 spec:
   accessModes:
     - ReadOnlyMany
