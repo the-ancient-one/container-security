@@ -4,17 +4,19 @@ metadata:
   annotations:
     kompose.cmd: kompose --file docker-compose.yml convert
     kompose.version: 1.30.0 (HEAD)
-  creationTimestamp: null
   labels:
     io.kompose.service: csvs-webserver
   name: csvs-webserver
   namespace: default
 spec:
+  type: NodePort                        # Changed from default ClusterIP → allows external access
+  selector:
+    io.kompose.service: csvs-webserver  # Matches pod label io.kompose.service=csvs-webserver
   ports:
     - name: "80"
-      port: 80
-      targetPort: 80
-  selector:
-    io.kompose.service: csvs-webserver
+      protocol: TCP
+      port: 80                          # Port the service listens on internally
+      targetPort: 80                    # Port on the Nginx pod
+      nodePort: 30080                   # External port on the minikube node (range 30000-32767)
 status:
   loadBalancer: {}

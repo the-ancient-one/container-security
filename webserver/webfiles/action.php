@@ -1,5 +1,5 @@
 <?php
-$servername = "db.cyber23.test";
+$servername = "csvs-dbserver";
 $fullname = "wwwclient23";
 $password = rtrim(file_get_contents("/run/secrets/db_password"));
 $dbname = "csvs23db";

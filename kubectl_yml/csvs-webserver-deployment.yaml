@@ -1,16 +1,25 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: csvs-webserver
+  annotations:
+    kompose.cmd: kompose --file docker-compose.yml convert
+    kompose.version: 1.30.0 (HEAD)
   labels:
-    app: csvs-webserver
+    io.kompose.service: csvs-webserver
+  name: csvs-webserver
+  namespace: default
 spec:
-  ports:
-    - port: 80
+  type: NodePort                        # LoadBalancer → NodePort (works on minikube without tunnel)
   selector:
-    app: csvs-webserver
-    tier: frontend
-  type: LoadBalancer
+    io.kompose.service: csvs-webserver  # matches actual pod label
+  ports:
+    - name: "80"
+      protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30080                   # External port (range 30000-32767)
+status:
+  loadBalancer: {}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -18,7 +27,6 @@ metadata:
   annotations:
     kompose.cmd: kompose --file docker-compose.yml convert
     kompose.version: 1.30.0 (HEAD)
-  creationTimestamp: null
   labels:
     io.kompose.service: csvs-webserver
   name: csvs-webserver
@@ -28,39 +36,42 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: csvs-webserver
-  strategy: {}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0        # never create new pod before old is gone (prevents hostPort conflict)
+      maxUnavailable: 1  # kill old pod first, then start new
   template:
     metadata:
       annotations:
         kompose.cmd: kompose --file docker-compose.yml convert
         kompose.version: 1.30.0 (HEAD)
-      creationTimestamp: null
       labels:
         io.kompose.network/helm-chart-csvs-dbserver-net: "true"
         io.kompose.service: csvs-webserver
     spec:
       containers:
-        - image: u5577491_csvs_webserver_i:1.5
-          name: u5577491-csvs-webserver-c
-          imagePullPolicy: IfNotPresent
+        - name: u123456-csvs-webserver-c
+          image: u123456_csvs_webserver_i:1.5
+          imagePullPolicy: Never
           ports:
-            - containerPort: 80
-              hostPort: 80
+            - containerPort: 80         # NO hostPort — NodePort service handles external access
               protocol: TCP
           resources:
             limits:
               cpu: 100m
               memory: "104857600"
           volumeMounts:
-            - mountPath: /run/secrets/db-password
-              name: db-password
+            - name: db-password
+              mountPath: /run/secrets/db_password   # exact file path PHP reads
+              subPath: db_password                   # mounts ONE file, not the whole directory
+              readOnly: true                         # only the file is read-only, not /run/secrets
       hostname: wwwcyber23test
       restartPolicy: Always
       volumes:
         - name: db-password
           secret:
+            secretName: db-password     # K8s secret name
             items:
-              - key: db-password
-                path: db-password
-            secretName: db-password
-status: {}
+              - key: db-password        # ← hyphen: matches actual key inside the K8s secret
+                path: db_password       # ← underscore: PHP reads /run/secrets/db_password

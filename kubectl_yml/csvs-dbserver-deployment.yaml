@@ -27,9 +27,9 @@ spec:
         io.kompose.service: csvs-dbserver
     spec:
       containers:
-        - image: u5577491_csvs_dbserver_i:1.5
-          name: u5577491-csvs-dbserver-c
-          imagePullPolicy: IfNotPresent
+        - image: u123456_csvs_dbserver_i:1.5
+          name:  u123456-csvs-dbserver-c
+          imagePullPolicy: Never
           ports:
             - containerPort: 3306
               hostPort: 3306

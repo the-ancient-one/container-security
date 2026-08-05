@@ -1,3 +1,4 @@
+CREATE DATABASE IF NOT EXISTS csvs23db;
 DROP USER IF EXISTS 'wwwclient23'@'%' ;
 CREATE USER 'wwwclient23'@'%' IDENTIFIED BY 'wwwclient23Creds';
 GRANT SELECT,INSERT on csvs23db.* to 'wwwclient23'@'%';
