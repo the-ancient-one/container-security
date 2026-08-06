@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
         - name: u123456-csvs-webserver-c
-          image: u123456_csvs_webserver_i:1.5
+          image: u123456_csvs_webserver_i:1.5.1
           imagePullPolicy: Never
           ports:
             - containerPort: 80         # NO hostPort — NodePort service handles external access
