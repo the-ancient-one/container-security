@@ -30,7 +30,7 @@ $HTML = <<<THEEND
 <html>
 <head>
 <link rel="stylesheet" href="style.css">
-<title>Staff Suggestions</title> 
+<title>Staff Wonderful Suggestions</title> 
 </head>
 <body>
   <div class="container"> 
