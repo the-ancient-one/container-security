@@ -1,0 +1,116 @@
+# ──────────────────────────────────────────────────────────────
+# NETWORK POLICIES — csvs namespace
+#
+# Traffic matrix:
+#   external → webserver  :80           ALLOWED
+#   webserver → dbserver  :3306         ALLOWED
+#   all pods  → DNS       :53 UDP/TCP   ALLOWED
+#   everything else                     DENIED
+# ──────────────────────────────────────────────────────────────
+
+# ── POLICY 1: Default Deny All ────────────────────────────────
+# Baseline deny for all pods in csvs namespace
+# Every allowed flow must be explicitly defined below
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: csvs                             
+spec:
+  podSelector: {}                            
+  policyTypes:
+    - Ingress
+    - Egress
+
+---
+# ── POLICY 2: Allow External Traffic to Webserver on :80 ──────
+# Permits inbound HTTP traffic to the webserver from anywhere
+# Covers NodePort :30080 → ClusterIP :80 → pod :80
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-webserver-ingress
+  namespace: csvs                            
+spec:
+  podSelector:
+    matchLabels:
+      io.kompose.service: csvs-webserver     
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 80
+          protocol: TCP
+
+---
+# ── POLICY 3: Allow Webserver Egress to DB on :3306 ───────────
+# default-deny-all blocks ALL egress — this explicitly re-opens
+# the outbound path from webserver to dbserver on port 3306
+# Without this, the webserver cannot initiate a DB connection
+# even if the DB ingress rule (Policy 4) allows it
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-webserver-egress-to-db
+  namespace: csvs                           
+spec:
+  podSelector:
+    matchLabels:
+      io.kompose.service: csvs-webserver      
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              io.kompose.service: csvs-dbserver  
+      ports:
+        - port: 3306
+          protocol: TCP
+
+---
+# ── POLICY 4: Allow DB Ingress from Webserver on :3306 ────────
+# Permits inbound MariaDB connections to dbserver
+# Only accepts connections sourced from csvs-webserver pod
+# Blocks any other pod or external source from reaching :3306
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-webserver-to-db
+  namespace: csvs                            
+spec:
+  podSelector:
+    matchLabels:
+      io.kompose.service: csvs-dbserver      
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              io.kompose.service: csvs-webserver   
+      ports:
+        - port: 3306
+          protocol: TCP
+
+---
+# ── POLICY 5: Allow DNS Egress for All Pods ───────────────────
+# Kubernetes DNS (CoreDNS) runs on port 53 UDP and TCP
+# Without this, pods cannot resolve service names like
+# csvs-dbserver → ClusterIP, causing "Name or service not known"
+# Applies to ALL pods via empty podSelector
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: csvs                             
+spec:
+  podSelector: {}                             
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP                      
+        - port: 53
+          protocol: TCP                       
