@@ -1,26 +1,3 @@
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    kompose.cmd: kompose --file docker-compose.yml convert
-    kompose.version: 1.30.0 (HEAD)
-  labels:
-    io.kompose.service: csvs-webserver
-  name: csvs-webserver
-  namespace: csvs
-spec:
-  type: NodePort                        # LoadBalancer → NodePort (works on minikube without tunnel)
-  selector:
-    io.kompose.service: csvs-webserver  # matches actual pod label
-  ports:
-    - name: "80"
-      protocol: TCP
-      port: 80
-      targetPort: 80
-      nodePort: 30080                   # External port (range 30000-32767)
-status:
-  loadBalancer: {}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
