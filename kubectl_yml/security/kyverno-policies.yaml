@@ -1,0 +1,334 @@
+# ──────────────────────────────────────────────────────────────
+# KYVERNO POLICIES — csvs namespace
+#
+# validationFailureAction:
+#   Audit   = report violations, allow pods to start
+#   Enforce = block non-compliant pods at admission
+#
+# STARTING IN AUDIT MODE — switch to Enforce after verifying
+# existing pods pass all policies
+# ──────────────────────────────────────────────────────────────
+
+# ── POLICY 1: Require Dedicated Namespace (CKV_K8S_21) ────────
+# Blocks any resource being applied to the default namespace
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-namespace
+  annotations:
+    policies.kyverno.io/title: Require Dedicated Namespace
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >
+      Resources must not be deployed to the default namespace.
+      All resources must be in a dedicated namespace.
+spec:
+  validationFailureAction: Audit          # ← change to Enforce when ready
+  background: true                        # also scan existing resources
+  rules:
+    - name: check-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Service
+                - Pod
+              namespaces:
+                - default                 # trigger on anything in default
+      validate:
+        message: "Resources must not be deployed to the default namespace. Use a dedicated namespace like 'csvs'."
+        deny: {}                          # deny if matched (i.e. in default namespace)
+
+---
+# ── POLICY 2: Require runAsNonRoot (CKV_K8S_23) ───────────────
+# Ensures no container runs as root at pod or container level
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-non-root
+  annotations:
+    policies.kyverno.io/title: Require Non-Root Containers
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >
+      Containers must not run as root. Requires runAsNonRoot: true
+      at both pod and container level securityContext.
+spec:
+  validationFailureAction: Audit          # ← change to Enforce when ready
+  background: true
+  rules:
+    - name: check-pod-run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Pod
+              namespaces:
+                - csvs
+      validate:
+        message: "Pod securityContext must set runAsNonRoot: true (CKV_K8S_23)."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+
+    - name: check-container-run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Pod
+              namespaces:
+                - csvs
+      validate:
+        message: "Container securityContext must set runAsNonRoot: true (CKV_K8S_23)."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  runAsNonRoot: true
+
+---
+# ── POLICY 3: Require Pod Security Context (CKV_K8S_29) ───────
+# Ensures pod-level securityContext is defined
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-pod-security-context
+  annotations:
+    policies.kyverno.io/title: Require Pod Security Context
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >
+      All pods must define a pod-level securityContext with
+      runAsNonRoot, runAsUser, and seccompProfile.
+spec:
+  validationFailureAction: Audit          # ← change to Enforce when ready
+  background: true
+  rules:
+    - name: check-pod-security-context
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Pod
+              namespaces:
+                - csvs
+      validate:
+        message: "Pod must define securityContext with runAsNonRoot and seccompProfile (CKV_K8S_29)."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: ">0"             # any non-zero UID
+              seccompProfile:
+                type: RuntimeDefault
+
+---
+# ── POLICY 4: Require Container Security Context (CKV_K8S_30) ─
+# Ensures container-level securityContext is defined
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-container-security-context
+  annotations:
+    policies.kyverno.io/title: Require Container Security Context
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >
+      All containers must define a container-level securityContext
+      with allowPrivilegeEscalation: false and runAsNonRoot: true.
+spec:
+  validationFailureAction: Audit          # ← change to Enforce when ready
+  background: true
+  rules:
+    - name: check-container-security-context
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Pod
+              namespaces:
+                - csvs
+      validate:
+        message: "Container must define securityContext with allowPrivilegeEscalation: false (CKV_K8S_30)."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  allowPrivilegeEscalation: false
+
+---
+# ── POLICY 5: Require Drop ALL Capabilities (CKV_K8S_37/28) ───
+# Ensures all Linux capabilities are dropped
+# Dropping ALL also covers NET_RAW (CKV_K8S_28)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-drop-all-capabilities
+  annotations:
+    policies.kyverno.io/title: Require Drop All Capabilities
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >
+      All containers must drop ALL Linux capabilities.
+      This also covers NET_RAW (CKV_K8S_28) as part of ALL.
+spec:
+  validationFailureAction: Audit          # ← change to Enforce when ready
+  background: true
+  rules:
+    - name: check-drop-all
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Pod
+              namespaces:
+                - csvs
+      validate:
+        message: "Container must drop ALL capabilities (CKV_K8S_37/28). Add capabilities.drop: [ALL] to securityContext."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
+
+---
+# ── POLICY 6: Disallow Automount Service Account Token (CKV_K8S_38)
+# Ensures pods that don't need K8s API access don't get a token
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-automount-service-account-token
+  annotations:
+    policies.kyverno.io/title: Disallow Automount Service Account Token
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >
+      Pods should not automount service account tokens unless
+      explicitly required for K8s API access.
+spec:
+  validationFailureAction: Audit          # ← change to Enforce when ready
+  background: true
+  rules:
+    - name: check-automount-token
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Pod
+              namespaces:
+                - csvs
+      validate:
+        message: "Pod must set automountServiceAccountToken: false unless K8s API access is required (CKV_K8S_38)."
+        pattern:
+          spec:
+            automountServiceAccountToken: false
+
+---
+# ── POLICY 7: Require Liveness Probe (CKV_K8S_8) ─────────────
+# Ensures all containers have a liveness probe defined
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-liveness-probe
+  annotations:
+    policies.kyverno.io/title: Require Liveness Probe
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >
+      All containers must define a livenessProbe so Kubernetes
+      can detect and restart crashed containers.
+spec:
+  validationFailureAction: Audit          # ← change to Enforce when ready
+  background: true
+  rules:
+    - name: check-liveness-probe
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Pod
+              namespaces:
+                - csvs
+      validate:
+        message: "Container must define a livenessProbe (CKV_K8S_8)."
+        pattern:
+          spec:
+            containers:
+              - livenessProbe:
+                  {}                      # any livenessProbe config is acceptable
+
+---
+# ── POLICY 8: Require Readiness Probe (CKV_K8S_9) ────────────
+# Ensures all containers have a readiness probe defined
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-readiness-probe
+  annotations:
+    policies.kyverno.io/title: Require Readiness Probe
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >
+      All containers must define a readinessProbe so Kubernetes
+      only routes traffic to ready containers.
+spec:
+  validationFailureAction: Audit          # ← change to Enforce when ready
+  background: true
+  rules:
+    - name: check-readiness-probe
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Pod
+              namespaces:
+                - csvs
+      validate:
+        message: "Container must define a readinessProbe (CKV_K8S_9)."
+        pattern:
+          spec:
+            containers:
+              - readinessProbe:
+                  {}                      # any readinessProbe config is acceptable
+
+---
+# ── POLICY 9: Require Resource Limits ─────────────────────────
+# Ensures all containers define CPU and memory limits
+# Prevents resource exhaustion on single-node minikube
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >
+      All containers must define CPU and memory limits to
+      prevent resource exhaustion on the node.
+spec:
+  validationFailureAction: Audit          # ← change to Enforce when ready
+  background: true
+  rules:
+    - name: check-resource-limits
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - Pod
+              namespaces:
+                - csvs
+      validate:
+        message: "Container must define resource limits for CPU and memory."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: "?*"             
+                    memory: "?*"          
