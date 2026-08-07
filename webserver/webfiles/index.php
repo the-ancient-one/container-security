@@ -34,7 +34,7 @@ $HTML = <<<THEEND
 </head>
 <body>
   <div class="container"> 
-    <h1>Staff Suggestions</h1> 
+    <h1>Staff Wonderful Suggestions</h1> 
     <h3>Share your constructive ideas to improve our workplace!</h3> 
 
     <form action="action.php" method="post">
